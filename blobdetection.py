@@ -2,56 +2,49 @@ import cv2
 import numpy as np
 
 # Buka input stream dari webcam
-webcam = cv2.VideoCapture(0)
+webcam = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 
 while True:
     # Baca frame dari webcam
-    _, img = webcam.read()
+    ret, img = webcam.read()
+    
+    if not ret:
+        print("Tidak dapat membaca frame dari webcam.")
+        break
     
     # Konversi gambar dari BGR ke HSV
     imgHSV = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     
     # Buat binary image dengan threshold untuk warna tertentu
-    lower = np.array([9, 114, 170])
-    upper = np.array([61, 206, 255])
+    lower = np.array([15, 98, 126])
+    upper = np.array([105, 203, 225])
     mask = cv2.inRange(imgHSV, lower, upper)
+    mask_bgr = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
+
+    # Hitung momen dari gambar biner
+    M = cv2.moments(mask)
     
-    # Gunakan mask langsung sebagai gambar threshold
-    thresh = mask
-
-    # Mencari kontur
-    contour_img = img.copy()
-    contours = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    contours = contours[0] if len(contours) == 2 else contours[1]
-
-    isolated_count = 0
-    cluster_count = 0
-
-    for cntr in contours:
-        area = cv2.contourArea(cntr)
-        convex_hull = cv2.convexHull(cntr)
-        convex_hull_area = cv2.contourArea(convex_hull)
-        
-        if convex_hull_area > 0:  # Periksa apakah convex_hull_area tidak nol
-            ratio = area / convex_hull_area
-            if ratio < 0.91:
-                # Jika rasio kurang dari 0.91, kontur dianggap sebagai cluster
-                cv2.drawContours(contour_img, [cntr], 0, (0, 0, 255), 2)
-                cluster_count += 1
-            else:
-                # Jika rasio lebih dari atau sama dengan 0.91, kontur dianggap terisolasi
-                cv2.drawContours(contour_img, [cntr], 0, (0, 255, 0), 2)
-                isolated_count += 1
-
-    print('number_clusters:', cluster_count)
-    print('number_isolated:', isolated_count)
-
-    cv2.imshow("thresh", thresh)
-    cv2.imshow("contour_img", contour_img)
+    if M["m00"] != 0:
+        # Hitung koordinat x, y dari pusat
+        cX = int(M["m10"] / M["m00"])
+        cY = int(M["m01"] / M["m00"])
+        X = cX - 320
+        Y = cY - 240
+        # Tandai titik pusat dan beri teks
+        cv2.circle(mask_bgr, (cX, cY), 5, (0, 0, 255), -1)
+        cv2.putText(mask_bgr, f"({X}, {Y})", (cX, cY), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+    else:
+        # Jika tidak ada area terdeteksi, tampilkan pesan
+        print("Tidak ada area yang terdeteksi.")
     
+    # Tampilkan gambar hasil
+    cv2.imshow("thresh", mask_bgr)
+    print(X,Y)
+    # Tunggu input untuk keluar (ESC)
     key = cv2.waitKey(1)
     if key == 27:  # ESC key
         break
 
+# Lepaskan resources dan tutup jendela
 webcam.release()
 cv2.destroyAllWindows()
