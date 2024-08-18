@@ -12,7 +12,6 @@ height, width, _ = img.shape
 center_x = width // 2
 center_y = height // 2
 
-# Inisialisasi variabel X dan Y
 X, Y = 0, 0
 
 while True:
@@ -26,13 +25,12 @@ while True:
     # Konversi gambar dari BGR ke HSV
     imgHSV = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     
-    # Buat binary image dengan threshold untuk warna tertentu
     lower = np.array([15, 98, 126])
     upper = np.array([105, 203, 225])
     mask = cv2.inRange(imgHSV, lower, upper)
     mask_bgr = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
     
-    # Tambahkan garis crosshair
+    # Tambahkan garis koordinat tengah
     cv2.line(mask_bgr, (center_x, 0), (center_x, height), (255, 0, 0), 2)  # Garis vertikal hijau
     cv2.line(mask_bgr, (0, center_y), (width, center_y), (255, 0, 0), 2)   # Garis horizontal hijau
     
@@ -45,7 +43,6 @@ while True:
         cY = int(M["m01"] / M["m00"])
         X = cX - center_x
         Y = cY - center_y
-        # Tandai titik pusat objek dan beri teks dengan warna merah
         cv2.circle(mask_bgr, (cX, cY), 5, (0, 0, 255), -1)
         cv2.putText(mask_bgr, f"({X}, {Y})", (cX, cY), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
     else:
@@ -59,11 +56,9 @@ while True:
     cv2.imshow("GAMBAR ASLI", output)
     print(X, Y)
     
-    # Tunggu input untuk keluar (ESC)
     key = cv2.waitKey(1)
-    if key == 27:  # ESC key
+    if key == 27: 
         break
 
-# Lepaskan resources dan tutup jendela
 webcam.release()
 cv2.destroyAllWindows()
