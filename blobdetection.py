@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 
 # Buka input stream dari webcam
-webcam = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+webcam = cv2.VideoCapture(0)
 
 # Dapatkan dimensi frame webcam
 ret, img = webcam.read()
