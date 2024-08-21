@@ -8,7 +8,8 @@ SoftwareSerial mySerial =  SoftwareSerial(rxPin, txPin);
 
 int data1 = 0;
 int data2 = 0;
-
+String inputString = "";
+bool dataReceiver = false;
 
 void Split(char* e) {
   char* v[2];
@@ -25,7 +26,6 @@ void Split(char* e) {
   data2 = atoi(v[1]);
 
 }
-String inputString = "";
 
 void setup()  {
     Serial.begin(9600);
@@ -35,14 +35,14 @@ void setup()  {
 
 void loop() {
   if (mySerial.available() > 0) {
-    inputString = mySerial.readStringUntil('\n'); // Read the input as a string
-    char inputCharArray[inputString.length() + 1]; // Create a char array
-    inputString.toCharArray(inputCharArray, inputString.length() + 1); // Convert string to char array
-    Split(inputCharArray); // Pass the char array to Split function
+    inputString = mySerial.readStringUntil('\n'); 
+    char inputCharArray[inputString.length() + 1]; 
+    inputString.toCharArray(inputCharArray, inputString.length() + 1);
+    Split(inputCharArray); 
 
+    Serial.print(data1);
+    Serial.print(',');
+    Serial.println(data2);
   }
-  
-  Serial.print(data1);
-  Serial.print(',');
-  Serial.println(data2);
 }
+  
