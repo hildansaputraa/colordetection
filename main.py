@@ -1,75 +1,75 @@
 import cv2
 import numpy as np
+import serial
+import time
 
-def empty(a):
-    pass
+#kirim koordinat
+PORT = '/dev/ttyUSB0'
+BAUD_RATE = 9600
+ser = serial.Serial(PORT, BAUD_RATE)
 
-def stackImages(scale,imgArray):
-    rows = len(imgArray)
-    cols = len(imgArray[0])
-    rowsAvailable = isinstance(imgArray[0], list)
-    width = imgArray[0][0].shape[1]
-    height = imgArray[0][0].shape[0]
-    if rowsAvailable:
-        for x in range ( 0, rows):
-            for y in range(0, cols):
-                if imgArray[x][y].shape[:2] == imgArray[0][0].shape [:2]:
-                    imgArray[x][y] = cv2.resize(imgArray[x][y], (0, 0), None, scale, scale)
-                else:
-                    imgArray[x][y] = cv2.resize(imgArray[x][y], (imgArray[0][0].shape[1], imgArray[0][0].shape[0]), None, scale, scale)
-                if len(imgArray[x][y].shape) == 2: imgArray[x][y]= cv2.cvtColor( imgArray[x][y], cv2.COLOR_GRAY2BGR)
-        imageBlank = np.zeros((height, width, 3), np.uint8)
-        hor = [imageBlank]*rows
-        hor_con = [imageBlank]*rows
-        for x in range(0, rows):
-            hor[x] = np.hstack(imgArray[x])
-        ver = np.vstack(hor)
-    else:
-        for x in range(0, rows):
-            if imgArray[x].shape[:2] == imgArray[0].shape[:2]:
-                imgArray[x] = cv2.resize(imgArray[x], (0, 0), None, scale, scale)
-            else:
-                imgArray[x] = cv2.resize(imgArray[x], (imgArray[0].shape[1], imgArray[0].shape[0]), None,scale, scale)
-            if len(imgArray[x].shape) == 2: imgArray[x] = cv2.cvtColor(imgArray[x], cv2.COLOR_GRAY2BGR)
-        hor= np.hstack(imgArray)
-        ver = hor
-    return ver
-
-
-cv2.namedWindow("TrackBars")
-cv2.resizeWindow("TrackBars",640,240)
-
-cv2.createTrackbar("Hue Min","TrackBars",0,179,empty)
-cv2.createTrackbar("Hue Max","TrackBars",117,179,empty)
-cv2.createTrackbar("Sat Min","TrackBars",0,255,empty)
-cv2.createTrackbar("Sat Max","TrackBars",254,255,empty)
-cv2.createTrackbar("Val Min","TrackBars",137,255,empty)
-cv2.createTrackbar("Val Max","TrackBars",255,255,empty)
-
+# Buka input stream dari webcam
 webcam = cv2.VideoCapture(0)
 
-while True:    
-    _, img = webcam.read()  
-    imgHSV= cv2.cvtColor(img,cv2.COLOR_BGR2HSV)
+# Dapatkan dimensi frame webcam
+ret, img = webcam.read()
+height, width, _ = img.shape
+
+
+# Koordinat pusat frame
+center_x = width // 2
+center_y = height // 2
+
+X, Y = 0, 0
+
+while True:
+    # Baca frame dari webcam
+    ret, img  = webcam.read()
     
-    h_min = cv2.getTrackbarPos("Hue Min","TrackBars")
-    h_max = cv2.getTrackbarPos("Hue Max", "TrackBars")
-    s_min = cv2.getTrackbarPos("Sat Min", "TrackBars")
-    s_max = cv2.getTrackbarPos("Sat Max", "TrackBars")
-    v_min = cv2.getTrackbarPos("Val Min", "TrackBars")
-    v_max = cv2.getTrackbarPos("Val Max", "TrackBars")
-
-    lower = np.array([h_min,s_min,v_min])
-    upper = np.array([h_max,s_max,v_max])
-
-    print(h_min,h_max,s_min,s_max,v_min,v_max)
-    mask = cv2.inRange(img,lower,upper)
-    imgResult = cv2.bitwise_and(img,img,mask=mask)
-
-
-    imgStack = stackImages(0.6,([img,imgHSV],[mask,imgResult]))
-    cv2.imshow("Image Stack", imgStack)
-
-    key = cv2.waitKey(1)
-    if key == 27: # Tekan ESC untuk keluar
+    
+    if ret is False:
+        print("Tidak dapat membaca frame dari webcam.")
         break
+    
+    # Konversi gambar dari BGR ke HSV
+    imgHSV = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    
+    lower = np.array([15, 98, 126])
+    upper = np.array([105, 203, 225])
+    mask = cv2.inRange(imgHSV, lower, upper)
+    mask_bgr = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
+    
+    # Tambahkan garis koordinat tengah
+    cv2.line(mask_bgr, (center_x, 0), (center_x, height), (255, 0, 0), 2)  # Garis vertikal hijau
+    cv2.line(mask_bgr, (0, center_y), (width, center_y), (255, 0, 0), 2)   # Garis horizontal hijau
+    
+    # Hitung momen dari gambar biner
+    M = cv2.moments(mask)
+    
+    if M["m00"] != 0:
+        # Hitung koordinat x, y dari pusat objek yang terdeteksi
+        cX = int(M["m10"] / M["m00"])
+        cY = int(M["m01"] / M["m00"])
+        X = cX - center_x
+        Y = cY - center_y
+        cv2.circle(mask_bgr, (cX, cY), 5, (0, 0, 255), -1)
+        cv2.putText(mask_bgr, f"({X}, {Y})", (cX, cY), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+    else:
+        print("Tidak ada area yang terdeteksi.")
+    
+    # Gabungkan gambar asli dengan mask_bgr untuk menampilkan hasil akhir
+    output = cv2.addWeighted(img, 0.7, mask_bgr, 0.3, 0)
+    
+    # Tampilkan gambar hasil
+    cv2.imshow("KOORDINAT GAMBAR", mask_bgr)
+    cv2.imshow("GAMBAR ASLI", output)
+    #print(X, Y)
+    ser.write(f"{X},{Y}\n".encode('utf-8'))
+    print(f"Data {X}{Y} berhasil dikirim.")
+          
+    key = cv2.waitKey(1)
+    if key == 27: 
+        break
+
+webcam.release()
+cv2.destroyAllWindows()

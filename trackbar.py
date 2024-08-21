@@ -1,43 +1,75 @@
 import cv2
 import numpy as np
 
-def nothing(x):
-    pass  # nothing happens when the pass is executed
+def empty(a):
+    pass
 
-imgBGR = np.zeros((300,512,3), np.uint8)
-imgHSV = imgBGR
-cv2.namedWindow('image')
-
-# In OpenCV, Hue has values from 0 to 180, Saturation and Value from 0 to 255.
-
-# inputs of cv2.createTrackbar()
-# first argument is the trackbar name,
-# second one is the window name to which it is attached,
-# third argument is the default value,
-# fourth one is the maximum value,
-# fifth one is the callback function which is executed every time trackbar value changes.
-cv2.createTrackbar('H','image',0,180,nothing)
-cv2.createTrackbar('S','image',0,255,nothing)
-cv2.createTrackbar('V','image',0,255,nothing)
-
-switch = '0 : OFF \n1 : ON'
-cv2.createTrackbar(switch, 'image', 0, 1, nothing)
-
-while(1):
-    cv2.imshow('image',imgBGR)
-    k = cv2.waitKey(1) & 0xFF
-    if k == 27:  # wait for ESC key to exit
-        break
-
-    H = cv2.getTrackbarPos('H','image')
-    S = cv2.getTrackbarPos('S','image')
-    V = cv2.getTrackbarPos('V','image')
-    SW = cv2.getTrackbarPos(switch,'image')
-    
-    if SW == 0:
-        imgBGR[:] = 0
+def stackImages(scale,imgArray):
+    rows = len(imgArray)
+    cols = len(imgArray[0])
+    rowsAvailable = isinstance(imgArray[0], list)
+    width = imgArray[0][0].shape[1]
+    height = imgArray[0][0].shape[0]
+    if rowsAvailable:
+        for x in range ( 0, rows):
+            for y in range(0, cols):
+                if imgArray[x][y].shape[:2] == imgArray[0][0].shape [:2]:
+                    imgArray[x][y] = cv2.resize(imgArray[x][y], (0, 0), None, scale, scale)
+                else:
+                    imgArray[x][y] = cv2.resize(imgArray[x][y], (imgArray[0][0].shape[1], imgArray[0][0].shape[0]), None, scale, scale)
+                if len(imgArray[x][y].shape) == 2: imgArray[x][y]= cv2.cvtColor( imgArray[x][y], cv2.COLOR_GRAY2BGR)
+        imageBlank = np.zeros((height, width, 3), np.uint8)
+        hor = [imageBlank]*rows
+        hor_con = [imageBlank]*rows
+        for x in range(0, rows):
+            hor[x] = np.hstack(imgArray[x])
+        ver = np.vstack(hor)
     else:
-        imgHSV[:] = [H,S,V]
-        imgBGR=cv2.cvtColor(imgHSV,cv2.COLOR_HSV2BGR)
+        for x in range(0, rows):
+            if imgArray[x].shape[:2] == imgArray[0].shape[:2]:
+                imgArray[x] = cv2.resize(imgArray[x], (0, 0), None, scale, scale)
+            else:
+                imgArray[x] = cv2.resize(imgArray[x], (imgArray[0].shape[1], imgArray[0].shape[0]), None,scale, scale)
+            if len(imgArray[x].shape) == 2: imgArray[x] = cv2.cvtColor(imgArray[x], cv2.COLOR_GRAY2BGR)
+        hor= np.hstack(imgArray)
+        ver = hor
+    return ver
 
-cv2.destroyAllWindows()
+
+cv2.namedWindow("TrackBars")
+cv2.resizeWindow("TrackBars",640,240)
+
+cv2.createTrackbar("Hue Min","TrackBars",0,179,empty)
+cv2.createTrackbar("Hue Max","TrackBars",117,179,empty)
+cv2.createTrackbar("Sat Min","TrackBars",0,255,empty)
+cv2.createTrackbar("Sat Max","TrackBars",254,255,empty)
+cv2.createTrackbar("Val Min","TrackBars",137,255,empty)
+cv2.createTrackbar("Val Max","TrackBars",255,255,empty)
+
+webcam = cv2.VideoCapture(0)
+
+while True:    
+    _, img = webcam.read()  
+    imgHSV= cv2.cvtColor(img,cv2.COLOR_BGR2HSV)
+    
+    h_min = cv2.getTrackbarPos("Hue Min","TrackBars")
+    h_max = cv2.getTrackbarPos("Hue Max", "TrackBars")
+    s_min = cv2.getTrackbarPos("Sat Min", "TrackBars")
+    s_max = cv2.getTrackbarPos("Sat Max", "TrackBars")
+    v_min = cv2.getTrackbarPos("Val Min", "TrackBars")
+    v_max = cv2.getTrackbarPos("Val Max", "TrackBars")
+
+    lower = np.array([h_min,s_min,v_min])
+    upper = np.array([h_max,s_max,v_max])
+
+    print(h_min,h_max,s_min,s_max,v_min,v_max)
+    mask = cv2.inRange(img,lower,upper)
+    imgResult = cv2.bitwise_and(img,img,mask=mask)
+
+
+    imgStack = stackImages(0.6,([img,imgHSV],[mask,imgResult]))
+    cv2.imshow("Image Stack", imgStack)
+
+    key = cv2.waitKey(1)
+    if key == 27: # Tekan ESC untuk keluar
+        break
