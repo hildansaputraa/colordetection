@@ -20,7 +20,7 @@ height, width, _ = img.shape
 center_x = width // 2
 center_y = height // 2
 
-X, Y = 0, 0
+Xgreen, Xyellow, Ygreen, Yyellow = 0, 0, 0, 0
 
 # Load kalibrasi warna
 try:
@@ -59,6 +59,9 @@ while True:
     maskGreen = cv2.inRange(imgHSV, lowerGreen, upperGreen)
     
     # Gabungkan kedua mask
+    bgrGreen = cv2.cvtColor(maskGreen, cv2.COLOR_GRAY2BGR)
+    bgrYellow = cv2.cvtColor(maskYellow, cv2.COLOR_GRAY2BGR)
+    
     mask = cv2.bitwise_or(maskYellow, maskGreen)
     mask_bgr = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
     
@@ -67,28 +70,47 @@ while True:
     cv2.line(mask_bgr, (0, center_y), (width, center_y), (255, 0, 0), 2)   # Garis horizontal biru
     
     # Hitung momen dari gambar biner
-    M = cv2.moments(mask)
+    Mgreen = cv2.moments(maskGreen)
     
-    if M["m00"] != 0:
+    if Mgreen["m00"] != 0:
         # Hitung koordinat x, y dari pusat objek yang terdeteksi
-        cX = int(M["m10"] / M["m00"])
-        cY = int(M["m01"] / M["m00"])
-        X = cX - center_x
-        Y = cY - center_y
-        cv2.circle(mask_bgr, (cX, cY), 5, (0, 0, 255), -1)
-        cv2.putText(mask_bgr, f"({X}, {Y})", (cX, cY), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+        cXg = int(Mgreen["m10"] / Mgreen["m00"])
+        cYg = int(Mgreen["m01"] / Mgreen["m00"])
+        
+        Xgreen = cXg - center_x
+        Ygreen = cYg - center_y
+        
+        cv2.circle(bgrGreen, (cXg, cYg), 5, (0, 0, 255), -1)
+        cv2.putText(bgrGreen, f"({Xgreen}, {Ygreen})", (cXg, cYg), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+
     else:
-        print("Tidak ada area yang terdeteksi.")
+        print("Tidak ada hijau yang terdeteksi.")
+    
+    Myellow = cv2.moments(maskYellow)
+    
+    if Myellow["m00"] != 0:
+        # Hitung koordinat x, y dari pusat objek yang terdeteksi
+        cXy = int(Myellow["m10"] / Myellow["m00"])
+        cYy = int(Myellow["m01"] / Myellow["m00"])
+
+        Xyellow = cXy - center_x
+        Yyellow = cYy - center_y
+    
+        cv2.circle(bgrYellow, (cXy, cYy), 5, (0, 0, 255), -1)
+        cv2.putText(bgrYellow, f"({Xyellow}, {Yyellow})", (cXy, cYy), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+    else:
+        print("Tidak ada kuning yang terdeteksi.")
     
     # Gabungkan gambar asli dengan mask_bgr untuk menampilkan hasil akhir
     output = cv2.addWeighted(img, 0.7, mask_bgr, 0.3, 0)
     
     # Tampilkan gambar hasil
-    cv2.imshow("KOORDINAT GAMBAR", mask_bgr)
-    cv2.imshow("GAMBAR ASLI", output)
+    cv2.imshow("KOORDINAT GAMBAR1", bgrYellow)
+    cv2.imshow("KOORDINAT GAMBAR", bgrGreen)
+   # cv2.imshow("GAMBAR ASLI", output)
 
-    ser.write(f"{X},{Y}\n".encode('utf-8'))
-    print(f"Data {X}{Y} berhasil dikirim.")
+    print(Xgreen,"+",Xyellow,"+",Ygreen,"+",Yyellow)
+    ser.write(f"{Xgreen},{Xyellow},{Ygreen},{Yyellow}\n".encode('utf-8'))
     
     key = cv2.waitKey(1)
     if key == 27:  # Tekan ESC untuk keluar

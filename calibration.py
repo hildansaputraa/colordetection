@@ -10,15 +10,6 @@ except Exception as e:
         "min" : [0,0,0],
         "max" : [0,0,0] 
     }
-
-# try:
-#     with open('green.json', 'r') as openfile:
-#         data_kalibrasi = json.load(openfile)
-# except Exception as e:
-#     data_kalibrasi = {
-#         "min" : [0,0,0],
-#         "max" : [0,0,0] 
-#     }
     
 def empty(a):
     pass
