@@ -46,7 +46,7 @@ cv2.createTrackbar("Sat Max","TrackBars",254,255,empty)
 cv2.createTrackbar("Val Min","TrackBars",137,255,empty)
 cv2.createTrackbar("Val Max","TrackBars",255,255,empty)
 
-webcam = cv2.VideoCapture(0)
+webcam = cv2.VideoCapture(0,cv2.CAP_DSHOW)
 
 while True:    
     _, img = webcam.read()  

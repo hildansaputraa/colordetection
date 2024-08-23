@@ -9,10 +9,10 @@ BAUD_RATE = 9600
 ser = serial.Serial(PORT, BAUD_RATE)
 
 # Buka input stream dari webcam
-webcam = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(0)
 
-# Dapatkan dimensi frame webcam
-ret, img = webcam.read()
+# Dapatkan dimensi frame cap
+ret, img = cap.read()
 height, width, _ = img.shape
 
 
@@ -23,12 +23,12 @@ center_y = height // 2
 X, Y = 0, 0
 
 while True:
-    # Baca frame dari webcam
-    ret, img  = webcam.read()
+    # Baca frame dari cap
+    ret, img  = cap.read()
     
     
     if ret is False:
-        print("Tidak dapat membaca frame dari webcam.")
+        print("Tidak dapat membaca frame dari cap.")
         break
     
     # Konversi gambar dari BGR ke HSV
@@ -71,5 +71,5 @@ while True:
     if key == 27: 
         break
 
-webcam.release()
+cap.release()
 cv2.destroyAllWindows()
