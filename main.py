@@ -1,20 +1,13 @@
 import cv2
 import numpy as np
-import serial
-import time
-
-#kirim koordinat
-PORT = '/dev/ttyUSB0'
-BAUD_RATE = 9600
-ser = serial.Serial(PORT, BAUD_RATE)
+import json
 
 # Buka input stream dari webcam
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 
 # Dapatkan dimensi frame cap
 ret, img = cap.read()
 height, width, _ = img.shape
-
 
 # Koordinat pusat frame
 center_x = width // 2
@@ -22,10 +15,24 @@ center_y = height // 2
 
 X, Y = 0, 0
 
+# Load kalibrasi warna
+try:
+    with open('yellow.json', 'r') as openfile:
+        yellow = json.load(openfile)
+except Exception as e:
+    print('data kalibrasi yellow tidak ada')
+    exit()
+
+try:
+    with open('green.json', 'r') as openfile:
+        green = json.load(openfile)
+except Exception as e:
+    print('data kalibrasi green tidak ada')
+    exit()
+
 while True:
     # Baca frame dari cap
     ret, img  = cap.read()
-    
     
     if ret is False:
         print("Tidak dapat membaca frame dari cap.")
@@ -34,14 +41,23 @@ while True:
     # Konversi gambar dari BGR ke HSV
     imgHSV = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     
-    lower = np.array([15, 98, 126])
-    upper = np.array([105, 203, 225])
-    mask = cv2.inRange(imgHSV, lower, upper)
+    # Membuat mask untuk warna kuning
+    lowerYellow = np.array(yellow['min'])
+    upperYellow = np.array(yellow['max'])
+    maskYellow = cv2.inRange(imgHSV, lowerYellow, upperYellow)
+    
+    # Membuat mask untuk warna hijau
+    lowerGreen = np.array(green['min'])
+    upperGreen = np.array(green['max'])
+    maskGreen = cv2.inRange(imgHSV, lowerGreen, upperGreen)
+    
+    # Gabungkan kedua mask
+    mask = cv2.bitwise_or(maskYellow, maskGreen)
     mask_bgr = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
     
     # Tambahkan garis koordinat tengah
-    cv2.line(mask_bgr, (center_x, 0), (center_x, height), (255, 0, 0), 2)  # Garis vertikal hijau
-    cv2.line(mask_bgr, (0, center_y), (width, center_y), (255, 0, 0), 2)   # Garis horizontal hijau
+    cv2.line(mask_bgr, (center_x, 0), (center_x, height), (255, 0, 0), 2)  # Garis vertikal biru
+    cv2.line(mask_bgr, (0, center_y), (width, center_y), (255, 0, 0), 2)   # Garis horizontal biru
     
     # Hitung momen dari gambar biner
     M = cv2.moments(mask)
@@ -63,12 +79,10 @@ while True:
     # Tampilkan gambar hasil
     cv2.imshow("KOORDINAT GAMBAR", mask_bgr)
     cv2.imshow("GAMBAR ASLI", output)
-    #print(X, Y)
-    ser.write(f"{X},{Y}\n".encode('utf-8'))
-    print(f"Data {X}{Y} berhasil dikirim.")
-          
+    print(X, Y)
+    
     key = cv2.waitKey(1)
-    if key == 27: 
+    if key == 27:  # Tekan ESC untuk keluar
         break
 
 cap.release()
