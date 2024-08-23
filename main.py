@@ -1,6 +1,13 @@
 import cv2
 import numpy as np
 import json
+import serial
+import time
+
+#kirim koordinat
+PORT = '/dev/ttyUSB0'
+BAUD_RATE = 9600
+ser = serial.Serial(PORT, BAUD_RATE)
 
 # Buka input stream dari webcam
 cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
@@ -79,7 +86,9 @@ while True:
     # Tampilkan gambar hasil
     cv2.imshow("KOORDINAT GAMBAR", mask_bgr)
     cv2.imshow("GAMBAR ASLI", output)
-    print(X, Y)
+
+    ser.write(f"{X},{Y}\n".encode('utf-8'))
+    print(f"Data {X}{Y} berhasil dikirim.")
     
     key = cv2.waitKey(1)
     if key == 27:  # Tekan ESC untuk keluar
