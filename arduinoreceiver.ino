@@ -8,8 +8,9 @@ SoftwareSerial mySerial =  SoftwareSerial(rxPin, txPin);
 
 int data1 = 0;
 int data2 = 0;
+int data3 = 0;
+int data4 = 0;
 String inputString = "";
-bool dataReceiver = false;
 
 void Split(char* e) {
   char* v[2];
@@ -24,6 +25,8 @@ void Split(char* e) {
 
   data1 = atoi(v[0]);
   data2 = atoi(v[1]);
+  data1 = atoi(v[2]);
+  data2 = atoi(v[3]);
 
 }
 
@@ -43,6 +46,9 @@ void loop() {
     Serial.print(data1);
     Serial.print(',');
     Serial.println(data2);
+    Serial.print(data3);
+    Serial.print(',');
+    Serial.println(data4);
   }
 }
   
