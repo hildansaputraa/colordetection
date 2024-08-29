@@ -1,13 +1,13 @@
 import cv2
 import numpy as np
 import json
-import serial
+#import serial
 import time
 
 #kirim koordinat
-PORT = '/dev/ttyUSB0'
-BAUD_RATE = 9600
-ser = serial.Serial(PORT, BAUD_RATE)
+#PORT = '/dev/ttyUSB0'
+#BAUD_RATE = 9600
+#ser = serial.Serial(PORT, BAUD_RATE)
 
 # Buka input stream dari webcam
 cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
@@ -24,6 +24,7 @@ Xgreen, Xyellow, Ygreen, Yyellow = 0, 0, 0, 0
 
 # Load kalibrasi warna
 try:
+    
     with open('yellow.json', 'r') as openfile:
         yellow = json.load(openfile)
 except Exception as e:
@@ -104,13 +105,45 @@ while True:
     # Gabungkan gambar asli dengan mask_bgr untuk menampilkan hasil akhir
     output = cv2.addWeighted(img, 0.7, mask_bgr, 0.3, 0)
     
+    
+    thresh = mask
+
+    # Mencari kontur
+    contour_img = img.copy()
+    contours = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours = contours[0] if len(contours) == 2 else contours[1]
+    mask_bgr = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
+
+    isolated_count = 0
+    cluster_count = 0
+
+    for cntr in contours:
+        area = cv2.contourArea(cntr)
+        convex_hull = cv2.convexHull(cntr)
+        convex_hull_area = cv2.contourArea(convex_hull)
+        
+        if convex_hull_area > 0:  # Periksa apakah convex_hull_area tidak nol
+            ratio = area / convex_hull_area
+            if ratio < 0.91:
+                # Jika rasio kurang dari 0.91, kontur dianggap sebagai cluster
+                cv2.drawContours(contour_img, [cntr], 0, (0, 0, 255), 2)
+                cluster_count += 1
+            else:
+                # Jika rasio lebih dari atau sama dengan 0.91, kontur dianggap terisolasi
+                cv2.drawContours(contour_img, [cntr], 0, (0, 255, 0), 2)
+                isolated_count += 1
+
+
+    cv2.imshow("thresh", thresh)
+    cv2.imshow("contour_img", contour_img)
+    
     # Tampilkan gambar hasil
     cv2.imshow("KOORDINAT GAMBAR1", bgrYellow)
     cv2.imshow("KOORDINAT GAMBAR", bgrGreen)
    # cv2.imshow("GAMBAR ASLI", output)
 
     print(Xgreen,"+",Xyellow,"+",Ygreen,"+",Yyellow)
-    ser.write(f"{Xgreen},{Xyellow},{Ygreen},{Yyellow}\n".encode('utf-8'))
+    #ser.write(f"{Xgreen},{Xyellow},{Ygreen},{Yyellow}\n".encode('utf-8'))
     
     key = cv2.waitKey(1)
     if key == 27:  # Tekan ESC untuk keluar
