@@ -4,6 +4,37 @@ import json
 #import serial
 import time
 
+def stackImages(scale,imgArray):
+    rows = len(imgArray)
+    cols = len(imgArray[0])
+    rowsAvailable = isinstance(imgArray[0], list)
+    width = imgArray[0][0].shape[1]
+    height = imgArray[0][0].shape[0]
+    if rowsAvailable:
+        for x in range ( 0, rows):
+            for y in range(0, cols):
+                if imgArray[x][y].shape[:2] == imgArray[0][0].shape [:2]:
+                    imgArray[x][y] = cv2.resize(imgArray[x][y], (0, 0), None, scale, scale)
+                else:
+                    imgArray[x][y] = cv2.resize(imgArray[x][y], (imgArray[0][0].shape[1], imgArray[0][0].shape[0]), None, scale, scale)
+                if len(imgArray[x][y].shape) == 2: imgArray[x][y]= cv2.cvtColor( imgArray[x][y], cv2.COLOR_GRAY2BGR)
+        imageBlank = np.zeros((height, width, 3), np.uint8)
+        hor = [imageBlank]*rows
+        hor_con = [imageBlank]*rows
+        for x in range(0, rows):
+            hor[x] = np.hstack(imgArray[x])
+        ver = np.vstack(hor)
+    else:
+        for x in range(0, rows):
+            if imgArray[x].shape[:2] == imgArray[0].shape[:2]:
+                imgArray[x] = cv2.resize(imgArray[x], (0, 0), None, scale, scale)
+            else:
+                imgArray[x] = cv2.resize(imgArray[x], (imgArray[0].shape[1], imgArray[0].shape[0]), None,scale, scale)
+            if len(imgArray[x].shape) == 2: imgArray[x] = cv2.cvtColor(imgArray[x], cv2.COLOR_GRAY2BGR)
+        hor= np.hstack(imgArray)
+        ver = hor
+    return ver
+
 #kirim koordinat
 #PORT = '/dev/ttyUSB0'
 #BAUD_RATE = 9600
@@ -70,77 +101,56 @@ while True:
     cv2.line(mask_bgr, (center_x, 0), (center_x, height), (255, 0, 0), 2)  # Garis vertikal biru
     cv2.line(mask_bgr, (0, center_y), (width, center_y), (255, 0, 0), 2)   # Garis horizontal biru
     
-    # Hitung momen dari gambar biner
-    Mgreen = cv2.moments(maskGreen)
     
-    if Mgreen["m00"] != 0:
-        # Hitung koordinat x, y dari pusat objek yang terdeteksi
-        cXg = int(Mgreen["m10"] / Mgreen["m00"])
-        cYg = int(Mgreen["m01"] / Mgreen["m00"])
-        
-        Xgreen = cXg - center_x
-        Ygreen = cYg - center_y
-        
-        cv2.circle(bgrGreen, (cXg, cYg), 5, (0, 0, 255), -1)
-        cv2.putText(bgrGreen, f"({Xgreen}, {Ygreen})", (cXg, cYg), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+    #green
+    blurGreen = cv2.medianBlur(maskGreen, 17)
+    contoursGreen = cv2.findContours(blurGreen, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contoursGreen = contoursGreen[0] if len(contoursGreen) == 2 else contoursGreen[1]
 
-    else:
-        print("Tidak ada hijau yang terdeteksi.")
-    
-    Myellow = cv2.moments(maskYellow)
-    
-    if Myellow["m00"] != 0:
-        # Hitung koordinat x, y dari pusat objek yang terdeteksi
-        cXy = int(Myellow["m10"] / Myellow["m00"])
-        cYy = int(Myellow["m01"] / Myellow["m00"])
 
-        Xyellow = cXy - center_x
-        Yyellow = cYy - center_y
-    
-        cv2.circle(bgrYellow, (cXy, cYy), 5, (0, 0, 255), -1)
-        cv2.putText(bgrYellow, f"({Xyellow}, {Yyellow})", (cXy, cYy), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-    else:
-        print("Tidak ada kuning yang terdeteksi.")
-    
-    # Gabungkan gambar asli dengan mask_bgr untuk menampilkan hasil akhir
-    output = cv2.addWeighted(img, 0.7, mask_bgr, 0.3, 0)
-    
-    
-    thresh = mask
-
-    # Mencari kontur
-    contour_img = img.copy()
-    contours = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    contours = contours[0] if len(contours) == 2 else contours[1]
-    mask_bgr = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
-
-    isolated_count = 0
-    cluster_count = 0
-
-    for cntr in contours:
+    for cntr in contoursGreen:
         area = cv2.contourArea(cntr)
-        convex_hull = cv2.convexHull(cntr)
-        convex_hull_area = cv2.contourArea(convex_hull)
+        Mgreen = cv2.moments(cntr)
+        if area > 10000:
+            if Mgreen["m00"] != 0:
+                cXy = int(Mgreen["m10"] / Mgreen["m00"])
+                cYy = int(Mgreen["m01"] / Mgreen["m00"])
+                    
+                Xgreen = cXy - center_x
+                Ygreen = cYy - center_y
         
-        if convex_hull_area > 0:  # Periksa apakah convex_hull_area tidak nol
-            ratio = area / convex_hull_area
-            if ratio < 0.91:
-                # Jika rasio kurang dari 0.91, kontur dianggap sebagai cluster
-                cv2.drawContours(contour_img, [cntr], 0, (0, 0, 255), 2)
-                cluster_count += 1
-            else:
-                # Jika rasio lebih dari atau sama dengan 0.91, kontur dianggap terisolasi
-                cv2.drawContours(contour_img, [cntr], 0, (0, 255, 0), 2)
-                isolated_count += 1
-
-
-    cv2.imshow("thresh", thresh)
-    cv2.imshow("contour_img", contour_img)
+                cv2.circle(img, (cXy, cYy), 5, (0, 0, 255), -1)
+                cv2.putText(img, f"({cXy}, {cYy})", (cXy, cYy), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+                cv2.drawContours(img, [cntr], 0, (0, 0, 255), 2)
+               
+  
     
-    # Tampilkan gambar hasil
-    cv2.imshow("KOORDINAT GAMBAR1", bgrYellow)
-    cv2.imshow("KOORDINAT GAMBAR", bgrGreen)
-   # cv2.imshow("GAMBAR ASLI", output)
+    #yellow
+    blurYellow = cv2.medianBlur(maskYellow, 17)
+    contoursYellow = cv2.findContours(blurYellow, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contoursYellow = contoursYellow[0] if len(contoursYellow) == 2 else contoursYellow[1]
+
+
+    for cntr in contoursYellow:
+        area = cv2.contourArea(cntr)
+        Myellow = cv2.moments(cntr)
+        if area > 5000:
+            if Myellow["m00"] != 0:
+                cXy = int(Myellow["m10"] / Myellow["m00"])
+                cYy = int(Myellow["m01"] / Myellow["m00"])
+                    
+                Xyellow = cXy - center_x
+                Yyellow = cYy - center_y
+        
+                cv2.circle(img, (cXy, cYy), 5, (0, 0, 255), -1)
+                cv2.putText(img, f"({Xyellow}, {Yyellow})", (Xyellow, Yyellow), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+                cv2.drawContours(img, [cntr], 0, (0, 0, 255), 2)
+
+    
+
+    imgStack = stackImages(0.6,([img,imgHSV],[blurGreen,blurYellow]))
+    cv2.imshow("Image Stack", imgStack)
+
 
     print(Xgreen,"+",Xyellow,"+",Ygreen,"+",Yyellow)
     #ser.write(f"{Xgreen},{Xyellow},{Ygreen},{Yyellow}\n".encode('utf-8'))

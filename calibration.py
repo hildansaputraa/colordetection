@@ -56,7 +56,7 @@ cv2.createTrackbar("Sat Max","TrackBars",data_kalibrasi['max'][1],255,empty)
 cv2.createTrackbar("Val Min","TrackBars",data_kalibrasi['min'][2],255,empty)
 cv2.createTrackbar("Val Max","TrackBars",data_kalibrasi['max'][2],255,empty)
 
-webcam = cv2.VideoCapture(0)
+webcam = cv2.VideoCapture(0,cv2.CAP_DSHOW)
 
 while True:    
     _, img = webcam.read()  
@@ -73,7 +73,8 @@ while True:
     upper = np.array(data_kalibrasi['max'])
 
     print(data_kalibrasi['min'],data_kalibrasi['max'])
-    mask = cv2.inRange(imgHSV,lower,upper)
+    mask = cv2.inRange(imgHSV,lower,upper)    
+    mask = cv2.medianBlur(mask, 15)
     imgResult = cv2.bitwise_and(img,img,mask=mask)
 
 
