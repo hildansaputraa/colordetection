@@ -130,8 +130,9 @@ while True:
     if nilaiNew != nilaiPrev:
         print(f"{Xgreen}+{Ygreen}+{Xyellow}+{Yyellow}")
         nilaiPrev = nilaiNew  # Update nilaiPrev setelah perbandingan
+        #ser.write(f"{Xgreen},{Xyellow},{Ygreen},{Yyellow}\n".encode('utf-8'))
 
-    #ser.write(f"{Xgreen},{Xyellow},{Ygreen},{Yyellow}\n".encode('utf-8'))
+    
     
     key = cv2.waitKey(1)
     if key == 27:  # Tekan ESC untuk keluar
